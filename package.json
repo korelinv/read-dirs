@@ -1,10 +1,10 @@
 {
   "name": "read-dirs",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "simple file scanner",
-  "repository" : {
-    "type" : "git",
-    "url" : "https://github.com/korelinv/read-dirs.git"
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/korelinv/read-dirs.git"
   },
   "main": "index.js",
   "dependencies": {
