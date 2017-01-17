@@ -1,8 +1,10 @@
-#install
+#Install
 
 > npm install scan-dirs
 
-#usage
+
+
+#Usage
 
 ```javascript
 const readdirs = require('read-dirs');
@@ -19,3 +21,29 @@ readdirs({
    }
 });
 ```
+
+
+
+#Config object
+
+Config object is used to configure root path for scanning, file extensions to look in
+and event during scanning process
+
+##path
+
+path to root folder
+multiple root folders could be defined using array
+
+##ext
+
+tells scanner wich file extensions to look for
+
+##on
+
+event accuring during scanning
+
+###path
+
+###line
+
+###eof
