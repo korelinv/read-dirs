@@ -59,11 +59,7 @@ function digestFile(options) {
         if (true === !!on.eof) {
             on.eof(scope);
         };
-        scanResults.resolve();
-    })
-    //???
-    .on('error', (error) => {
-        scanResults.reject(error);
+        scanResults.resolve(true);
     });
 
     return scanResults.promise;
@@ -108,6 +104,9 @@ function readdir(options) {
             result.reject(error);
         };
 
+
+        let digested = [];
+
         files.forEach((leaf) => {
 
             let scope = {
@@ -120,21 +119,30 @@ function readdir(options) {
                 on.path(scope);
             };
 
-            stat({path: scope.$path})
-            .then((stats) => {
-                let digested = [];
-                if (stats.isFile()) {
-                    if (hasAppropriateExtension({path: scope.$path, ext: ext})) {
-                        digested.push(digestFile({path: scope.$path, on: on}));
+            digested.push(
+                stat({path: scope.$path})
+                .then((stats) => {
+
+                    if (stats.isFile()) {
+                        if (hasAppropriateExtension({path: scope.$path, ext: ext})) {
+                            return digestFile({path: scope.$path, on: on});
+                        } else {
+                            return false;
+                        };
+                    } else {
+                        return readdir({path: scope.$path, ext: ext, on: on});
                     };
-                } else {
-                    digested.push(readdir({path: scope.$path, ext: ext, on: on}));
-                };
 
-                q.all(digested).then(() => result.resolve());
+                })
+            );
 
-            });
         });
+
+        q.all(digested)
+        .spread(() => {
+            result.resolve(true)
+        });
+
     });
 
     return result.promise;
@@ -158,20 +166,22 @@ function readdirs(options) {
     let query = [];
     roots.forEach((root) => {
 
-        fs.exists(root, (exists) => {
-            if (exists) {
-                query.push(readdir({
-                    path: root,
-                    ext: ext,
-                    on: on
-                }));
-            };
-        });
+        if (fs.existsSync(root)) {
+
+            query.push(readdir({
+                path: root,
+                ext: ext,
+                on: on
+            }));
+
+        };
 
     });
 
     q.all(query)
-    .then(() => result.resolve())
+    .spread(() => {
+        result.resolve(true);
+    })
     .catch((err) => result.reject(err));
 
     return result.promise
