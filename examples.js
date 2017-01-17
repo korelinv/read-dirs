@@ -1,6 +1,6 @@
 'use strict';
 
-const readdirs = require('read-dirs');
+const readdirs = require('read-dir');
 
 readdirs({
     path: ['./'],
@@ -22,5 +22,5 @@ readdirs({
         }
     }
 })
-.then((res) => console.log(res))
+.then(() => console.log('done'))
 .catch((err) => console.log(err));

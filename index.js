@@ -131,9 +131,7 @@ function readdir(options) {
                     digested.push(readdir({path: scope.$path, ext: ext, on: on}));
                 };
 
-                q.all(digested).then((res) => {
-                    result.resolve(res);
-                });
+                q.all(digested).then(() => result.resolve());
 
             });
         });
@@ -159,15 +157,21 @@ function readdirs(options) {
 
     let query = [];
     roots.forEach((root) => {
-        query.push(readdir({
-            path: root,
-            ext: ext,
-            on: on
-        }));
+
+        fs.exists(root, (exists) => {
+            if (exists) {
+                query.push(readdir({
+                    path: root,
+                    ext: ext,
+                    on: on
+                }));
+            };
+        });
+
     });
 
     q.all(query)
-    .then((res) => result.resolve(res))
+    .then(() => result.resolve())
     .catch((err) => result.reject(err));
 
     return result.promise
