@@ -5,6 +5,55 @@ const path = require('path');
 const readline = require('readline');
 const q = require('q');
 
+function uniquePath(array, value) {
+    let result = (Array.isArray(array)) ? array : [array];
+    if (false === result.includes(value)) {
+        result.push(value);
+    };
+    return result;
+};
+
+function pathExists(array, value) {
+    let result = (Array.isArray(array)) ? array : [array];
+    if (fs.existsSync(value)) {
+        result.push(value);
+    };
+    return result;
+};
+
+function stat(options) {
+
+    const result = q.defer();
+    const filePath = options.path;
+
+    if (false === !!options.path) {
+        results.reject('path not defined!');
+    };
+
+    fs.stat(filePath, (error, stats) => {
+        if (error) {
+            result.reject(error);
+        } else {
+            result.resolve(stats);
+        };
+    });
+
+    return result.promise;
+
+};
+
+function readdir(path) {
+    let result = q.defer();
+    fs.readdir(path, (error, files) => {
+        if (error) {
+            result.reject(error);
+        } else {
+            result.resolve(files);
+        };
+    });
+    return result.promise;
+};
+
 function hasAppropriateExtension(options) {
     let result = true;
 
@@ -21,22 +70,31 @@ function hasAppropriateExtension(options) {
     return result;
 };
 
-function digestFile(options) {
-
-    if (false === !!options.path) {
-        throw 'path not defined!';
+function proceedDigest(stats,options) {
+    let result;
+    if (stats.isFile()) {
+        if (hasAppropriateExtension({path: options.path, ext: options.ext})) {
+            result = digestFile({path: options.path, on: options.on});
+        } else {
+            result = false;
+        };
+    } else {
+        result = digestPath({path: options.path, ext: options.ext, on: options.on});
     };
+
+    return result;
+};
+
+function digestFile(options) {
 
     const filePath = options.path;
     const on = (false === !!options.on) ? {} : options.on;
 
     const scanResults = q.defer();
 
-
     const lineReader = readline.createInterface({
         input: fs.createReadStream(filePath)
     });
-
     let line = 0;
     let scope = {
         $file: {
@@ -66,45 +124,15 @@ function digestFile(options) {
 
 };
 
-function stat(options) {
+function digestPath(options) {
 
-    const result = q.defer();
-    const filePath = options.path;
-
-    if (false === !!options.path) {
-        results.reject('path not defined!');
-    };
-
-    fs.stat(filePath, (error, stats) => {
-        if (error) {
-            result.reject(error);
-        } else {
-            result.resolve(stats);
-        };
-    });
-
-    return result.promise;
-
-};
-
-function readdir(options) {
-
-    if (false === !!options.ext) {
-        throw 'ext is not defined!';
-    };
-
-    const result = q.defer();
     const ext = options.ext;
-    const root = (false === !!options.path) ? './' : options.path;
-    const on = (false === !!options.on) ? {} : options.on;
+    const root =  options.path;
+    const on = options.on;
 
-    fs.readdir(root, (error, files) => {
-
-        if (error) {
-            result.reject(error);
-        };
-
-
+    const result = q.defer();
+    readdir(root)
+    .then((files) => {
         let digested = [];
 
         files.forEach((leaf) => {
@@ -121,19 +149,11 @@ function readdir(options) {
 
             digested.push(
                 stat({path: scope.$path})
-                .then((stats) => {
-
-                    if (stats.isFile()) {
-                        if (hasAppropriateExtension({path: scope.$path, ext: ext})) {
-                            return digestFile({path: scope.$path, on: on});
-                        } else {
-                            return false;
-                        };
-                    } else {
-                        return readdir({path: scope.$path, ext: ext, on: on});
-                    };
-
-                })
+                .then((stats) => proceedDigest(stats,{
+                    path: scope.$path,
+                    ext: ext,
+                    on: on
+                }))
             );
 
         });
@@ -142,9 +162,8 @@ function readdir(options) {
         .spread(() => {
             result.resolve(true)
         });
-
-    });
-
+    })
+    .catch((error) => result.reject(error));
     return result.promise;
 };
 
@@ -158,32 +177,31 @@ function readdirs(options) {
         throw 'path is not defined';
     };
 
-    const result = q.defer();
     const ext = options.ext;
-    const roots = (Array.isArray(options.path)) ? options.path : [options.path];
     const on = (false === !!options.on) ? {} : options.on;
+    let roots = options.path;
+    if (Array.isArray(roots)) {
+        roots = (0 < roots.length) ? roots.reduce(uniquePath) : ['./'];
+        roots = Array.isArray(roots) ? roots.reduce(pathExists) : [roots];
+        roots = Array.isArray(roots) ? roots : [roots]
+    } else {
+        roots = [roots];
+    };
 
+    const result = q.defer();
     let query = [];
     roots.forEach((root) => {
-
-        if (fs.existsSync(root)) {
-
-            query.push(readdir({
-                path: root,
-                ext: ext,
-                on: on
-            }));
-
-        };
-
+        query.push(digestPath({
+            path: root,
+            ext: ext,
+            on: on
+        }));
     });
-
     q.all(query)
     .spread(() => {
         result.resolve(true);
     })
     .catch((err) => result.reject(err));
-
     return result.promise
 
 };
