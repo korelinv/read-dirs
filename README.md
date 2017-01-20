@@ -1,6 +1,6 @@
 #Install
 
-> npm install scan-dirs
+> npm install read-dirs
 
 
 
